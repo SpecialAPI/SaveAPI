@@ -311,7 +311,7 @@ namespace SaveAPI
             bool cachedFlagValue = GameStatsManager.Instance.GetFlag(GungeonFlags.FRIFLE_CORE_HUNTS_COMPLETE);
             foreach (MonsterHuntQuest quest in HuntData.OrderedQuests)
             {
-                if (quest != null && !quest.IsQuestComplete())
+                if (quest != null && !quest.IsReallyCompleted())
                 {
                     lastUncompletedQuest = quest;
                 }

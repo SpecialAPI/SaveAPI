@@ -58,6 +58,44 @@ namespace SaveAPI
             }
         }
 
+        public static bool IsReallyCompleted(this MonsterHuntQuest quest)
+        {
+            bool allRewardsUnlocked = true;
+            foreach(GungeonFlags flag in quest.FlagsToSetUponReward)
+            {
+                if(flag != GungeonFlags.NONE && !GameStatsManager.Instance.GetFlag(flag))
+                {
+                    allRewardsUnlocked = false;
+                    break;
+                }
+            }
+            if(quest is CustomHuntQuest custom)
+            {
+                if (allRewardsUnlocked)
+                {
+                    foreach (CustomDungeonFlags flag in custom.CustomFlagsToSetUponReward)
+                    {
+                        if (flag != CustomDungeonFlags.NONE && !AdvancedGameStatsManager.Instance.GetFlag(flag))
+                        {
+                            allRewardsUnlocked = false;
+                            break;
+                        }
+                    }
+                }
+                bool anyQuestFlagCompleted = false;
+                if(quest.QuestFlag != GungeonFlags.NONE)
+                {
+                    anyQuestFlagCompleted = GameStatsManager.Instance.GetFlag(quest.QuestFlag);
+                }
+                else if(custom.CustomQuestFlag != CustomDungeonFlags.NONE)
+                {
+                    anyQuestFlagCompleted = AdvancedGameStatsManager.Instance.GetFlag(custom.CustomQuestFlag);
+                }
+                return anyQuestFlagCompleted && allRewardsUnlocked;
+            }
+            return GameStatsManager.Instance.GetFlag(quest.QuestFlag) && allRewardsUnlocked;
+        }
+
         /// <summary>
         /// Converts a List{<typeparamref name="T"/>} to List{<typeparamref name="T2"/>} using <paramref name="convertor"/>
         /// </summary>
@@ -858,7 +896,9 @@ namespace SaveAPI
             }
             else
             {
-                self.prerequisites = self.prerequisites.Concat(new DungeonPrerequisite[] { prereq } ).ToArray();
+                DungeonPrerequisite[] prereqs = self.prerequisites;
+                Add(ref prereqs, prereq);
+                self.prerequisites = prereqs;
             }
             EncounterDatabaseEntry databaseEntry = EncounterDatabase.GetEntry(self.EncounterGuid);
             if (!string.IsNullOrEmpty(databaseEntry.ProxyEncounterGuid))
@@ -871,9 +911,24 @@ namespace SaveAPI
             }
             else
             {
-                databaseEntry.prerequisites = databaseEntry.prerequisites.Concat(new DungeonPrerequisite[] { prereq }).ToArray();
+                DungeonPrerequisite[] prereqs = databaseEntry.prerequisites;
+                Add(ref prereqs, prereq);
+                databaseEntry.prerequisites = prereqs;
             }
             return prereq;
+        }
+
+        /// <summary>
+		/// Adds <paramref name="element"/> to <paramref name="array"/>.
+		/// </summary>
+		/// <typeparam name="T">The type of the element to add.</typeparam>
+		/// <param name="array">The array to which <paramref name="element"/> will be added.</param>
+		/// <param name="element">The element to add to <paramref name="array"/>.</param>
+		public static void Add<T>(ref T[] array, T element)
+        {
+            List<T> list = array.ToList();
+            list.Add(element);
+            array = list.ToArray();
         }
 
         public static string ListToString<T>(List<T> list)
@@ -894,7 +949,7 @@ namespace SaveAPI
 
         public static void InsertOrAdd<T>(this List<T> self, int index, T toAdd)
         {
-            if (index < 0 || index > self.Count)
+            if (index < 0 || index >= self.Count)
             {
                 self.Add(toAdd);
             }
